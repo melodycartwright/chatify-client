@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function SideNav() {
-    const {logout} = useAuth();
+    const {user,logout} = useAuth();
     const navigate = useNavigate();
 
     function handleLogout() {
@@ -12,6 +12,9 @@ export default function SideNav() {
     }
     return (
         <aside className="sidenav">
+            <div style={{marginBottom: 12, fontSize: 14, opacity: 0.8}}>
+                {user ? <> Signed in as <strong>{user.username}</strong></> : 'Not signed in'}
+            </div>
             <nav>   
                 <ul>
                     <li><NavLink to="/chat">Chat</NavLink></li>
