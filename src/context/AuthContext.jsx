@@ -24,10 +24,25 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function register({username, password}) {
-    const csrfToken = getCsrfToken();
-    const response = await api.post('/auth/register', { username, password, csrfToken }) 
+async function register({ username, password, email, avatar }) {
+  const csrfToken = getCsrfToken();
+  try {
+
+    const payload = {
+      username,
+      password,
+      email,
+      avatar:
+        avatar || `https://i.pravatar.cc/150?u=${encodeURIComponent(username)}`,
+      csrfToken,
+    };
+    await api.post("/auth/register", payload);
+  } catch (err) {
+    const msg = err?.response?.data?.error || err?.message || "Register failed";
+    throw new Error(msg);
   }
+}
+
 
   async function login({username, password}) {
     const csrfToken = getCsrfToken();
