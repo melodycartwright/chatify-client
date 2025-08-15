@@ -28,3 +28,39 @@ api.interceptors.request.use((config) => {
     }
     return config;
 })
+//helpers(messages, users, etc.)
+export async function getMe() {
+    const r = await api.get('/users/me');
+    return r.data;  
+}
+
+export async function listUsers() {
+    const r = await api.get('/users');
+    return r.data;
+}   
+
+export async function listConversations() {
+    const r = await api.get('/conversations');
+    return r.data;
+}
+export async function listMessages(conversationId) {
+    const r= await api.get('/messages', {
+        params: { conversationId }})
+}
+
+export async function sendMessage(conversationId, text) {
+    const r = await api.post('/messages', { text, conversationId });
+    return r.data;
+}
+
+export async function deleteMessage(messageId) {
+    //delete /message/{id}
+    const r = await api.delete(`/messages/${messageId}`);
+    return r.data;
+}
+export async function inviteUser({userId, conversationId}) {
+  //body has to include the GUID convo id  
+  const r = await api.post('/invite/${userId}', { conversationId })
+    return r.data;
+}
+
