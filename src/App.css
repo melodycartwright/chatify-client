@@ -1,0 +1,25 @@
+.app-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+.sidenav {
+  padding: 16px;
+  border-right: 1px solid #eee;
+}
+
+.app-main {
+  padding: 24px;
+}
+
+form {
+  display: grid;
+  gap: 8px;
+  max-width: 320px;
+}
+
+input,
+button {
+  padding: 8px;
+}
