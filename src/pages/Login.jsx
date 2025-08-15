@@ -19,7 +19,7 @@ export default function Login() {
         }
     }
 return (
-    <form onSubmit={}>
+    <form onSubmit={onSubmit}>
         <h1>Login</h1>
         <input placeholder='Username' value={form.username}
         onChange={(e)=>setForm({...form, username:e.target.value})} />
