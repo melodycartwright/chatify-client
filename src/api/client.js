@@ -44,19 +44,19 @@ export async function listConversations() {
     return r.data;
 }
 export async function listMessages(conversationId) {
-    const r= await api.get('/messages', {
-        params: { conversationId }})
+  const r = await api.get("/messages", { params: { conversationId } });
+  return r.data;
 }
 
-export async function sendMessage(conversationId, text) {
-    const r = await api.post('/messages', { text, conversationId });
-    return r.data;
+export async function sendMessage({ conversationId, text }) {
+  // plural endpoint
+  const r = await api.post("/messages", { text, conversationId });
+  return r.data;
 }
-
 export async function deleteMessage(messageId) {
-    //delete /message/{id}
-    const r = await api.delete(`/messages/${messageId}`);
-    return r.data;
+  // plural in path
+  const r = await api.delete(`/messages/${messageId}`);
+  return r.data;
 }
 export async function inviteUser({userId, conversationId}) {
   //body has to include the GUID convo id  
