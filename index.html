@@ -1,16 +1,31 @@
-<!doctype html>
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self';
+  <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self';
                script-src 'self';
                style-src 'self' 'unsafe-inline';
                img-src 'self' https://i.pravatar.cc https://freeimage.host data:;
                connect-src 'self' https://chatify-api.up.railway.app;
                frame-ancestors 'none';
                base-uri 'self';
-               form-action 'self';" />
+               form-action 'self';" />  (restore and replace after local testing done)-->
+               
+               <!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+
+  <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:;
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' https://i.pravatar.cc https://freeimage.host data:;
+      connect-src 'self' https://chatify-api.up.railway.app ws: http://localhost:5173 http://127.0.0.1:5173;
+      worker-src 'self' blob:;
+      frame-ancestors 'none';
+      base-uri 'self';
+      form-action 'self';
+    " />
+
+           
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chatify Client</title>
 </head>

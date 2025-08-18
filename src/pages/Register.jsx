@@ -51,7 +51,9 @@ export default function Register() {
         password: form.password,
         avatar: form.avatar.trim() || suggestedAvatar,
       });
-      navigate("/login");
+    
+      setTimeout(() => navigate("/login", { replace: true }), 0);
+
     } catch (err) {
       const msg = err?.message || "Registration failed";
       setError(msg);

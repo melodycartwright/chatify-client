@@ -1,33 +1,73 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import {api, setToken, loadTokenFromStorage} from '../api/client.js';
-import { getCsrfToken } from '../api/csrf.js';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { api, setToken, loadTokenFromStorage } from "../api/client.js";
+import { listUsers } from "../api/client.js";
+import { getCsrfToken } from "../api/csrf.js";
 
 const AuthContext = createContext(null);
 
+function setStoredUsername(name) {
+  if (name) localStorage.setItem("username", name);
+  else localStorage.removeItem("username");
+}
+function getStoredUsername() {
+  return localStorage.getItem("username");
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [ready, setready] = useState(false);
+  const [user, setUser] = useState(null); // { userId?, username, avatar? }
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const t= loadTokenFromStorage();
-    if (t) fetchModule().finally(() => setready(true));
-    else setready(true);    
-  }, [])
+   
+    const t = loadTokenFromStorage();
+    const name = getStoredUsername();
+    if (!t) {
+      setReady(true);
+      return;
+    }
 
-  async function fetchMe(){
-    try{
-        const response = await api.get('/users/me');
-        setUser(response.data);
+    if (name) {
+   
+      resolveUserByUsername(name).finally(() => setReady(true));
+    } else {
+ 
+      setUser(null);
+      setReady(true);
+    }
+  }, []);
+
+  async function resolveUserByUsername(username) {
+    try {
+      const data = await listUsers({ username, limit: 5 });
+     
+      const arr = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.users)
+        ? data.users
+        : [];
+      const found = arr.find(
+        (u) => (u.username || "").toLowerCase() === username.toLowerCase()
+      );
+      if (found)
+        setUser({
+          userId: found.userId,
+          username: found.username,
+          avatar: found.avatar,
+        });
+      else setUser({ username }); // fallback: we still know the name from login
     } catch {
-        setToken(null)
-        setUser(null)
+      setUser({ username }); // fallback if the list call fails
     }
   }
 
-async function register({ username, password, email, avatar }) {
-  const csrfToken = getCsrfToken();
-  try {
-
+  async function register({ username, password, email, avatar }) {
+    const csrfToken = getCsrfToken();
     const payload = {
       username,
       password,
@@ -37,32 +77,34 @@ async function register({ username, password, email, avatar }) {
       csrfToken,
     };
     await api.post("/auth/register", payload);
-  } catch (err) {
-    const msg = err?.response?.data?.error || err?.message || "Register failed";
-    throw new Error(msg);
   }
-}
 
-
-  async function login({username, password}) {
+  async function login({ username, password }) {
     const csrfToken = getCsrfToken();
-    const response = await api.post('/auth/token', { username, password, csrfToken });
-    setToken(response.data?.token);
-    await fetchMe();
+    const res = await api.post("/auth/token", {
+      username,
+      password,
+      csrfToken,
+    });
+    setToken(res.data?.token);
+    setStoredUsername(username);
+    await resolveUserByUsername(username);
   }
+
   function logout() {
     setToken(null);
+    setStoredUsername(null);
     setUser(null);
   }
-  const value = useMemo(() => ({
-    user,ready, login, register, logout}), [user, ready])
-    return <AuthContext.Provider value={value}>
-      {children}</AuthContext.Provider>
+
+  const value = useMemo(
+    () => ({ user, ready, login, register, logout }),
+    [user, ready]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-    return useContext(AuthContext);
+  return useContext(AuthContext);
 }
-
-  
-  
