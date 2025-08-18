@@ -66,3 +66,15 @@ export async function inviteUser({ userId, conversationId }) {
   const r = await api.post(`/invite/${userId}`, { conversationId });
   return r.data;
 }
+// Update user info
+export async function updateUser({ userId, updatedData }) {
+  const r = await api.put('/user', { userId, updatedData })
+  return r.data
+}
+
+// Delete user
+export async function deleteUserById(userId) {
+  const r = await api.delete(`/users/${userId}`)
+  return r.data
+}
+
