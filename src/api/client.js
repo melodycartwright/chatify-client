@@ -1,4 +1,4 @@
-// src/api/client.js
+
 import axios from "axios";
 
 const API_BASE = "https://chatify-api.up.railway.app";
@@ -29,7 +29,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ---- Chatify API helpers ----
+// ---- API functions ----
 
 // Users
 export async function listUsers(params = {}) {
@@ -47,7 +47,7 @@ export async function listConversations() {
   return r.data;
 }
 
-// Messages (NOTE: plural endpoints)
+// Messages 
 export async function listMessages(conversationId) {
   const r = await api.get("/messages", { params: { conversationId } });
   return r.data;

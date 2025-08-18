@@ -17,7 +17,7 @@ function fallbackGuid() {
 }
 
 export default function Chat() {
-  const [conversations, setConversations] = useState([]); // always an array
+  const [conversations, setConversations] = useState([]); 
   const [selectedId, setSelectedId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");

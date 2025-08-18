@@ -7,8 +7,8 @@ export default function ProtectedRoute({ children }) {
   const { user, ready } = useAuth();
 
 
-  if (!ready) return null; // or a small loader
-
+  if (!ready) return null; // Wait until auth state is ready
+  // If user is not authenticated, redirect to login
   
   if (!user) return <Navigate to="/login" replace />;
 
