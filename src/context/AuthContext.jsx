@@ -24,45 +24,42 @@ export function AuthProvider({ children }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-   
     const t = loadTokenFromStorage();
     const name = getStoredUsername();
     if (!t) {
       setReady(true);
       return;
     }
-
-    if (name) {
-   
-      resolveUserByUsername(name).finally(() => setReady(true));
-    } else {
- 
-      setUser(null);
-      setReady(true);
-    }
+    if (name) reloadUser(name).finally(() => setReady(true));
+    else setReady(true);
   }, []);
 
   async function resolveUserByUsername(username) {
+    const data = await listUsers({ username, limit: 5 });
+    const arr = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.users)
+      ? data.users
+      : [];
+    const found = arr.find(
+      (u) => (u.username || "").toLowerCase() === username.toLowerCase()
+    );
+    if (found)
+      setUser({
+        userId: found.userId,
+        username: found.username,
+        avatar: found.avatar,
+      });
+    else setUser({ username });
+  }
+
+  async function reloadUser(usernameOverride) {
+    const name = usernameOverride || getStoredUsername();
+    if (!name) return;
     try {
-      const data = await listUsers({ username, limit: 5 });
-     
-      const arr = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.users)
-        ? data.users
-        : [];
-      const found = arr.find(
-        (u) => (u.username || "").toLowerCase() === username.toLowerCase()
-      );
-      if (found)
-        setUser({
-          userId: found.userId,
-          username: found.username,
-          avatar: found.avatar,
-        });
-      else setUser({ username }); // fallback: we still know the name from login
+      await resolveUserByUsername(name);
     } catch {
-      setUser({ username }); // fallback if the list call fails
+      /* keep last known */
     }
   }
 
@@ -88,7 +85,7 @@ export function AuthProvider({ children }) {
     });
     setToken(res.data?.token);
     setStoredUsername(username);
-    await resolveUserByUsername(username);
+    await reloadUser(username);
   }
 
   function logout() {
@@ -98,7 +95,7 @@ export function AuthProvider({ children }) {
   }
 
   const value = useMemo(
-    () => ({ user, ready, login, register, logout }),
+    () => ({ user, ready, login, register, logout, reloadUser }),
     [user, ready]
   );
 
