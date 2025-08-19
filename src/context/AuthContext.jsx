@@ -20,11 +20,13 @@ function getStoredUsername() {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null); // { userId?, username, avatar? }
+  const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const t = loadTokenFromStorage();
+    setIsAuthenticated(Boolean(t));
     const name = getStoredUsername();
     if (!t) {
       setReady(true);
@@ -85,18 +87,28 @@ export function AuthProvider({ children }) {
     });
     setToken(res.data?.token);
     setStoredUsername(username);
+    setIsAuthenticated(true);
     await reloadUser(username);
   }
 
   function logout() {
     setToken(null);
     setStoredUsername(null);
+    setIsAuthenticated(false);
     setUser(null);
   }
 
   const value = useMemo(
-    () => ({ user, ready, login, register, logout, reloadUser }),
-    [user, ready]
+    () => ({
+      user,
+      ready,
+      isAuthenticated,
+      login,
+      register,
+      logout,
+      reloadUser,
+    }),
+    [user, ready, isAuthenticated]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

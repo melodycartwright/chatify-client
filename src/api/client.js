@@ -25,9 +25,16 @@ export function loadTokenFromStorage() {
 }
 
 api.interceptors.request.use((config) => {
-  if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
+  const token = accessToken || localStorage.getItem("access_token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+export function hasToken() {
+  return Boolean(accessToken || localStorage.getItem("access_token"));
+}
+
+
 
 // ---- API functions ----
 
