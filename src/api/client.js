@@ -30,6 +30,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+
 export function hasToken() {
   return Boolean(accessToken || localStorage.getItem("access_token"));
 }

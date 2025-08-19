@@ -12,10 +12,12 @@ export default function Login() {
         e.preventDefault();
         setError(null);
         try {
-            await login(form);
-            navigate('/chat')
+          await login(form);
+          navigate("/chat");
         } catch (err) {
-            setError('Login failed. Please check your credentials.');
+          const msg =
+            err?.response?.data?.error || err?.message || "Login failed";
+          setError(msg);
         }
     }
 return (
