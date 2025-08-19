@@ -3,14 +3,15 @@ let csrfToken = null;
 export function getCsrfToken() {
   if (!csrfToken) {
     const w = typeof window !== "undefined" ? window : globalThis;
-    if (w?.crypto && typeof w.crypto.randomUUID === "function") {
-      csrfToken = w.crypto.randomUUID();
-    } else {
-      csrfToken = generateFallbackGuid();
-    }
+    csrfToken = w?.crypto?.randomUUID
+      ? w.crypto.randomUUID()
+      : generateFallbackGuid();
   }
   return csrfToken;
 }
+export function resertCsrfToken() {
+  csrfToken = null; }
+
 
 function generateFallbackGuid() {
   const s4 = () =>

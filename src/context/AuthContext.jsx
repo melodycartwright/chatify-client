@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { api, setToken, loadTokenFromStorage } from "../api/client.js";
 import { listUsers } from "../api/client.js";
-import { getCsrfToken } from "../api/csrf.js";
+import { getCsrfToken , resertCsrfToken} from "../api/csrf.js";
 
 const AuthContext = createContext(null);
 
@@ -78,24 +78,27 @@ export function AuthProvider({ children }) {
     await api.post("/auth/register", payload);
   }
 
-  async function login({ username, password }) {
-    const csrfToken = getCsrfToken();
-    const res = await api.post("/auth/token", {
-      username,
-      password,
-      csrfToken,
-    });
-    setToken(res.data?.token);
-    setStoredUsername(username);
-    setIsAuthenticated(true);
-    await reloadUser(username);
-  }
+async function login({ username, password }) {
+  const csrfToken = getCsrfToken();
+  const uname = username.trim(); 
+  const res = await api.post("/auth/token", {
+    username: uname,
+    password,
+    csrfToken,
+  });
+  setToken(res.data?.token);
+  setStoredUsername(uname);
+  setIsAuthenticated(true);
+  await reloadUser(uname);
+}
+
 
   function logout() {
     setToken(null);
     setStoredUsername(null);
     setIsAuthenticated(false);
     setUser(null);
+    resertCsrfToken();
   }
 
   const value = useMemo(
