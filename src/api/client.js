@@ -1,10 +1,10 @@
 
 import axios from "axios";
 
-const API_BASE = "https://chatify-api.up.railway.app";
+const VITE_API_BASE_URL = "https://chatify-api.up.railway.app";
 
 export const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: VITE_API_BASE_URL,
   headers: { "Content-Type": "application/json" },
   withCredentials: false,
 });
