@@ -1,194 +1,182 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { getUserById, updateUser, deleteUserById } from "../api/client.js";
+import { updateUserInfo, deleteUserById } from "../api/client.js";
+import { loadTokenFromStorage } from "../api/client.js";
 
-const USER_RE = /^[a-zA-Z0-9._-]{3,24}$/;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+function tokenUserId() {
+  const t = loadTokenFromStorage();
+  if (!t) return undefined;
+  try {
+    const payload = JSON.parse(atob(t.split(".")[1] || ""));
+    const raw =
+      payload?.userId ??
+      payload?.userid ??
+      payload?.userID ??
+      payload?.id ??
+      payload?.sub;
+    const id = Number(raw);
+    return Number.isFinite(id) ? id : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export default function Profile() {
-  const { user, ready, logout, reloadUser } = useAuth();
+  const { user, reloadUser, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [avatar, setAvatar] = useState("");
   const [saving, setSaving] = useState(false);
-  const [removing, setRemoving] = useState(false);
-
-  const [form, setForm] = useState({ username: "", email: "", avatar: "" });
-  const [confirmText, setConfirmText] = useState("");
-
-  const isValid = useMemo(() => {
-    const u = form.username.trim();
-    const e = form.email.trim();
-    return USER_RE.test(u) && EMAIL_RE.test(e);
-  }, [form]);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [notice, setNotice] = useState(null);
 
   useEffect(() => {
-    let cancel = false;
-    async function load() {
-      if (!ready) return;
-      if (!user?.userId) {
-        setLoading(false);
-        return;
-      } // fallback: minimal edit
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await getUserById(user.userId);
-        if (!cancel && data) {
-          setForm({
-            username: data.username || user.username || "",
-            email: data.email || "",
-            avatar: data.avatar || "",
-          });
-        }
-      } catch (e) {
-        if (!cancel) setError("Failed to load profile");
-      } finally {
-        if (!cancel) setLoading(false);
-      }
+    if (user) {
+      setUsername(user.username || "");
+      setEmail(user.email || "");
+      setAvatar(user.avatar || "");
     }
-    load();
-    return () => {
-      cancel = true;
-    };
-  }, [ready, user?.userId]);
+  }, [user]);
+
+  function currentId() {
+    const id = Number(user?.userId ?? tokenUserId());
+    return Number.isInteger(id) ? id : undefined;
+  }
 
   async function onSave(e) {
     e.preventDefault();
-    if (!user?.userId) return;
-    if (!isValid) {
-      setError("Please fix validation errors before saving.");
+    const id = currentId();
+    if (!id) {
+      setNotice({
+        kind: "error",
+        text: "Missing user ID. Try reloading or re-login.",
+      });
       return;
     }
     setSaving(true);
-    setError(null);
+    setNotice(null);
     try {
-      const desired = {
-        username: form.username.trim(),
-        email: form.email.trim(),
-        avatar:
-          form.avatar.trim() ||
-          `https://i.pravatar.cc/150?u=${encodeURIComponent(
-            form.username.trim()
-          )}`,
-      };
-      await updateUser({ userId: user.userId, updatedData: desired });
-      // if username changed, make sure auth state reflects it
-      await reloadUser(desired.username);
+      await updateUserInfo({ userId: id, username, email, avatar });
+      await reloadUser(username);
+      setNotice({ kind: "success", text: "Profile updated." });
     } catch (e) {
-      const msg =
-        e?.response?.data?.error || e?.message || "Failed to update profile";
-      setError(msg);
+      const msg = e?.response?.data?.error || e?.message || "Update failed.";
+      setNotice({ kind: "error", text: msg });
     } finally {
       setSaving(false);
     }
   }
 
   async function onDelete() {
-    if (!user?.userId) return;
-    if (confirmText !== "DELETE") {
-      setError("Type DELETE to confirm.");
+    const id = currentId();
+    if (!id) {
+      setNotice({
+        kind: "error",
+        text: "Missing user ID. Try reloading or re-login.",
+      });
       return;
     }
-    setRemoving(true);
-    setError(null);
+    if (deleteConfirm !== "DELETE") {
+      setNotice({ kind: "error", text: "Type DELETE to confirm." });
+      return;
+    }
+    setDeleting(true);
+    setNotice(null);
     try {
-      await deleteUserById(user.userId);
+      await deleteUserById(id);
       logout();
-      navigate("/register", { replace: true });
+      navigate("/login", { replace: true });
+      setTimeout(() => {
+        if (!/\/login$/.test(location.pathname)) location.assign("/login");
+      }, 50);
     } catch (e) {
-      const msg =
-        e?.response?.data?.error || e?.message || "Failed to delete user";
-      setError(msg);
+      const msg = e?.response?.data?.error || e?.message || "Delete failed.";
+      setNotice({ kind: "error", text: msg });
     } finally {
-      setRemoving(false);
+      setDeleting(false);
     }
   }
 
-  if (!ready) return <div>Loading…</div>;
-  if (loading) return <div>Loading profile…</div>;
-
   return (
-    <div style={{ maxWidth: 520 }}>
+    <div>
       <h1>Profile</h1>
 
-      <form onSubmit={onSave} noValidate>
+      {notice && (
+        <p style={{ color: notice.kind === "error" ? "#ef4444" : "#22c55e" }}>
+          {notice.text}
+        </p>
+      )}
+
+      <form
+        onSubmit={onSave}
+        style={{ display: "grid", gap: 10, maxWidth: 420 }}
+      >
         <label>
-          Username
+          <div>Username</div>
           <input
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="username"
             autoComplete="username"
           />
         </label>
 
         <label>
-          Email
+          <div>Email</div>
           <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
             type="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            placeholder="Email"
             autoComplete="email"
           />
         </label>
 
         <label>
-          Avatar URL
+          <div>Avatar URL</div>
           <input
-            type="url"
-            value={form.avatar}
-            onChange={(e) => setForm({ ...form, avatar: e.target.value })}
+            value={avatar}
+            onChange={(e) => setAvatar(e.target.value)}
             placeholder="https://…"
+            autoComplete="photo"
           />
         </label>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            margin: "8px 0",
-          }}
-        >
-          {form.avatar ? (
-            <img
-              src={form.avatar}
-              alt=""
-              width="48"
-              height="48"
-              style={{ borderRadius: 8 }}
-            />
-          ) : null}
-          <button type="submit" disabled={!isValid || saving}>
+        <div>
+          <button className="btn" type="submit" disabled={saving}>
             {saving ? "Saving…" : "Save changes"}
           </button>
         </div>
       </form>
 
-      <hr style={{ margin: "16px 0" }} />
+      <hr style={{ margin: "20px 0" }} />
 
-      <h2>Delete your account</h2>
-      <p>
-        Type <code>DELETE</code> and press the button to permanently remove your
-        account.
-      </p>
-      <input
-        value={confirmText}
-        onChange={(e) => setConfirmText(e.target.value)}
-        placeholder="DELETE"
-      />
-      <button
-        onClick={onDelete}
-        disabled={removing || confirmText !== "DELETE"}
-      >
-        {removing ? "Deleting…" : "Delete account"}
-      </button>
-
-      {error && <p style={{ color: "#a00", marginTop: 12 }}>{error}</p>}
+      <section>
+        <h2>Delete your account</h2>
+        <p>
+          Type <code>DELETE</code> and press the button to permanently remove
+          your account.
+        </p>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.target.value)}
+            placeholder="DELETE"
+          />
+          <button
+            className="btn btn--danger"
+            onClick={onDelete}
+            disabled={deleting}
+            type="button"
+          >
+            {deleting ? "Deleting…" : "Delete account"}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

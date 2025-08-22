@@ -1,7 +1,10 @@
 
 import axios from "axios";
+import { logError } from "../logging/sentry.js";
 
-const VITE_API_BASE_URL = "https://chatify-api.up.railway.app";
+export const VITE_API_BASE_URL =
+  import.meta?.env?.VITE_API_BASE_URL?.trim() ||
+  "https://chatify-api.up.railway.app";
 
 export const api = axios.create({
   baseURL: VITE_API_BASE_URL,
@@ -9,7 +12,7 @@ export const api = axios.create({
   withCredentials: false,
 });
 
-// ---- JWT storage + interceptor ----
+// JWT storage + interceptor
 let accessToken = null;
 
 export function setToken(token) {
@@ -30,14 +33,27 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+//login failed, not responding
+api.interceptors.response.use(
+  (r) => r,
+  (error) => {
+    try {
+      logError(error, {
+        url: error?.config?.url,
+        method: error?.config?.method,
+        status: error?.response?.status,
+        data: error?.response?.data,
+      });
+    } catch {}
+    return Promise.reject(error);
+  }
+);
+
 
 export function hasToken() {
   return Boolean(accessToken || localStorage.getItem("access_token"));
 }
 
-
-
-// ---- API functions ----
 
 // Users
 export async function listUsers(params = {}) {
@@ -49,13 +65,18 @@ export async function getUserById(userId) {
   return r.data;
 }
 
+export async function getMe() {
+  const r = await api.get("/user");
+  return r.data;
+}
+
 // Conversations
 export async function listConversations() {
   const r = await api.get("/conversations");
   return r.data;
 }
 
-// Messages 
+// Messages
 export async function listMessages(conversationId) {
   const r = await api.get("/messages", { params: { conversationId } });
   return r.data;
@@ -74,15 +95,17 @@ export async function inviteUser({ userId, conversationId }) {
   const r = await api.post(`/invite/${userId}`, { conversationId });
   return r.data;
 }
-// Update user info
-export async function updateUser({ userId, updatedData }) {
-  const r = await api.put('/user', { userId, updatedData })
-  return r.data
-}
 
-// Delete user
+// Profile
+export async function updateUserInfo({ userId, username, email, avatar }) {
+  const payload = { userId: Number(userId), updatedData: {} };
+  if (username != null) payload.updatedData.username = String(username).trim();
+  if (email != null) payload.updatedData.email = String(email).trim();
+  if (avatar != null) payload.updatedData.avatar = String(avatar).trim();
+  const r = await api.put("/user", payload);
+  return r.data;
+}
 export async function deleteUserById(userId) {
-  const r = await api.delete(`/users/${userId}`)
-  return r.data
+  const r = await api.delete(`/users/${Number(userId)}`);
+  return r.data;
 }
-

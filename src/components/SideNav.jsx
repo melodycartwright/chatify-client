@@ -5,6 +5,13 @@ import { useAuth } from "../context/AuthContext.jsx";
 export default function SideNav() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+
+  const avatarUrl =
+    (user?.avatar && String(user.avatar).trim()) ||
+    (user?.username
+      ? `https://i.pravatar.cc/150?u=${encodeURIComponent(user.username)}`
+      : "");
+
   function handleLogout() {
     logout();
     navigate("/login", { replace: true });
@@ -17,37 +24,64 @@ export default function SideNav() {
           marginBottom: 12,
           fontSize: 14,
           display: "flex",
-          alignItems: "center",
-          gap: 8,
+          flexDirection: "column",
+          gap: 6,
         }}
       >
-        {isAuthenticated && user?.avatar ? (
-          <img
-            src={user.avatar}
-            width="24"
-            height="24"
-            style={{ borderRadius: 6 }}
-            alt=""
-          />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {isAuthenticated && avatarUrl ? (
+            <img
+              src={avatarUrl}
+              width="40"
+              height="40"
+              style={{ borderRadius: 999 }}
+              alt={`${user?.username || "user"} avatar`}
+            />
+          ) : null}
+          {isAuthenticated && user ? (
+            <>
+              Signed in as <strong>{user.username}</strong>
+            </>
+          ) : (
+            "Not signed in"
+          )}
+        </div>
+
+        {isAuthenticated && user?.userId ? (
+          <div style={{ fontSize: 12, color: "#cfc8d4" }}>
+            Your ID: <code title="userId">{user.userId}</code>
+            <button
+              type="button"
+              className="btn btn--xs btn--outline"
+              style={{ marginLeft: 6, padding: "2px 6px" }}
+              onClick={() =>
+                navigator.clipboard?.writeText(String(user.userId))
+              }
+              aria-label="Copy your user ID"
+            >
+              Copy
+            </button>
+          </div>
         ) : null}
-        {isAuthenticated && user ? (
-          <>
-            Signed in as <strong>{user.username}</strong>
-          </>
-        ) : (
-          "Not signed in"
-        )}
       </div>
+
       <nav>
         <ul>
+        <li>
+            <NavLink className="nav-item" to="/profile">
+              Profile
+            </NavLink>
+          </li>   
           <li>
-            <NavLink to="/chat">Chat</NavLink>
+            <NavLink className="nav-item" to="/chat">
+              Chat
+            </NavLink>
           </li>
+         
           <li>
-            <NavLink to="/profile">Profile</NavLink>
-          </li>
-          <li>
-            <button onClick={handleLogout}>Logout</button>
+            <button className="nav-item" type="button" onClick={handleLogout}>
+              Logout
+            </button>
           </li>
         </ul>
       </nav>

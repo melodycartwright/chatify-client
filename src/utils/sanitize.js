@@ -1,6 +1,10 @@
-import DOMPurify from "dompurify";
-
-// sanitize any user HTML before rendering
 export function sanitize(html) {
-  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+  // very small sanitizer: escape tags, allow <br> 
+  const escaped = String(html)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  // our renderer replaces \n with <br/> AFTER sanitization,
+  // so just return escaped here.
+  return escaped;
 }

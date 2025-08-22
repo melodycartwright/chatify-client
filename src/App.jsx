@@ -1,3 +1,4 @@
+import React from "react";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import SideNav from "./components/SideNav.jsx";

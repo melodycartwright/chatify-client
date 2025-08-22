@@ -1,26 +1,23 @@
-
 import React from "react";
 
 export default class ErrorBoundary extends React.Component {
-  constructor(p) {
-    super(p);
-    this.state = { error: null };
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, err: null };
   }
   static getDerivedStateFromError(error) {
-    return { error };
+    return { hasError: true, err: error };
   }
-  componentDidCatch(error, info) {
-    console.error("React error boundary:", error, info);
+  componentDidCatch(error, errorInfo) {
+    // Log the error to an error reporting service
+    console.error("React error boundary:", error, errorInfo);
   }
   render() {
-    if (this.state.error) {
+    if (this.state.hasError) {
       return (
         <div style={{ padding: 16 }}>
-          <h2>Something went wrong</h2>
-          <pre style={{ whiteSpace: "pre-wrap" }}>
-            {String(this.state.error?.message || this.state.error)}
-          </pre>
-          <p style={{ opacity: 0.8 }}>Open Console for details.</p>
+          <h2>Something went wrong.</h2>
+          <pre style={{ whiteSpace: "pre-wrap" }}>{String(this.state.err)}</pre>
         </div>
       );
     }
