@@ -127,11 +127,11 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
-    setToken(null);
+    setToken(null); // clears JWT from sessionStorage
     setStoredUsername(null);
     setIsAuthenticated(false);
     setUser(null);
-    resertCsrfToken();
+    resertCsrfToken(); // clears CSRF from sessionStorage
     // also clear Sentry user if enabled
     setUserContext(null);
   }

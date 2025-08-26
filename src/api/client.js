@@ -17,18 +17,27 @@ let accessToken = null;
 
 export function setToken(token) {
   accessToken = token || null;
-  if (!token) localStorage.removeItem("access_token");
-  else localStorage.setItem("access_token", token);
+  setStoredJwt(token);
 }
 
 export function loadTokenFromStorage() {
-  const saved = localStorage.getItem("access_token");
+  const saved = getStoredJwt();
   accessToken = saved || null;
   return accessToken;
 }
+const JWT_KEY = "jwt";
+
+function getStoredJwt() {
+  return sessionStorage.getItem(JWT_KEY);
+}
+
+function setStoredJwt(token) {
+  if (!token) sessionStorage.removeItem(JWT_KEY);
+  else sessionStorage.setItem(JWT_KEY, token);
+}
 
 api.interceptors.request.use((config) => {
-  const token = accessToken || localStorage.getItem("access_token");
+  const token = accessToken || getStoredJwt();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -51,7 +60,7 @@ api.interceptors.response.use(
 
 
 export function hasToken() {
-  return Boolean(accessToken || localStorage.getItem("access_token"));
+  return Boolean(accessToken || getStoredJwt());
 }
 
 

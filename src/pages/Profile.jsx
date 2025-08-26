@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { updateUserInfo, deleteUserById } from "../api/client.js";
+import { logError, logInfo } from "../logging/sentry.js";
 import { loadTokenFromStorage } from "../api/client.js";
 
 function tokenUserId() {
@@ -47,6 +48,7 @@ export default function Profile() {
     return Number.isInteger(id) ? id : undefined;
   }
 
+  // ...existing code...
   async function onSave(e) {
     e.preventDefault();
     const id = currentId();
@@ -63,43 +65,17 @@ export default function Profile() {
       await updateUserInfo({ userId: id, username, email, avatar });
       await reloadUser(username);
       setNotice({ kind: "success", text: "Profile updated." });
+      logInfo("Profile updated", { userId: id, username, email, avatar });
     } catch (e) {
       const msg = e?.response?.data?.error || e?.message || "Update failed.";
       setNotice({ kind: "error", text: msg });
+      logError(e, { where: "Profile update", userId: id, username, email, avatar });
     } finally {
       setSaving(false);
     }
   }
 
-  async function onDelete() {
-    const id = currentId();
-    if (!id) {
-      setNotice({
-        kind: "error",
-        text: "Missing user ID. Try reloading or re-login.",
-      });
-      return;
-    }
-    if (deleteConfirm !== "DELETE") {
-      setNotice({ kind: "error", text: "Type DELETE to confirm." });
-      return;
-    }
-    setDeleting(true);
-    setNotice(null);
-    try {
-      await deleteUserById(id);
-      logout();
-      navigate("/login", { replace: true });
-      setTimeout(() => {
-        if (!/\/login$/.test(location.pathname)) location.assign("/login");
-      }, 50);
-    } catch (e) {
-      const msg = e?.response?.data?.error || e?.message || "Delete failed.";
-      setNotice({ kind: "error", text: msg });
-    } finally {
-      setDeleting(false);
-    }
-  }
+  // ...existing code...
 
   return (
     <div>

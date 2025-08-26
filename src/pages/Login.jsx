@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { logError, logInfo } from "../logging/sentry.js";
 
 export default function Login() {
   const { login } = useAuth();
@@ -10,16 +11,19 @@ export default function Login() {
   const [notice, setNotice] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  // ...existing code...
   async function onSubmit(e) {
     e.preventDefault();
     setBusy(true);
     setNotice(null);
     try {
       await login({ username, password });
+      logInfo("User logged in", { username });
       navigate("/chat", { replace: true });
     } catch (e) {
       const msg = e?.response?.data?.error || "Login failed.";
       setNotice({ kind: "error", text: msg });
+      logError(e, { where: "Login", username });
     } finally {
       setBusy(false);
     }

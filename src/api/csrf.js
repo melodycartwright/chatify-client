@@ -1,16 +1,23 @@
+const CSRF_KEY = "csrf";
 let csrfToken = null;
 
 export function getCsrfToken() {
   if (!csrfToken) {
-    const w = typeof window !== "undefined" ? window : globalThis;
-    csrfToken = w?.crypto?.randomUUID
-      ? w.crypto.randomUUID()
-      : generateFallbackGuid();
+    csrfToken = sessionStorage.getItem(CSRF_KEY);
+    if (!csrfToken) {
+      const w = typeof window !== "undefined" ? window : globalThis;
+      csrfToken = w?.crypto?.randomUUID
+        ? w.crypto.randomUUID()
+        : generateFallbackGuid();
+      sessionStorage.setItem(CSRF_KEY, csrfToken);
+    }
   }
   return csrfToken;
 }
 export function resertCsrfToken() {
-  csrfToken = null; }
+  csrfToken = null;
+  sessionStorage.removeItem(CSRF_KEY);
+}
 
 
 function generateFallbackGuid() {

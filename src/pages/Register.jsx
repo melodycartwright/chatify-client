@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { logError, logInfo } from "../logging/sentry.js";
 
 export default function Register() {
   const { register } = useAuth();
@@ -13,16 +14,19 @@ export default function Register() {
   const [notice, setNotice] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  // ...existing code...
   async function onSubmit(e) {
     e.preventDefault();
     setBusy(true);
     setNotice(null);
     try {
       await register({ username, password, email, avatar });
+      logInfo("User registered", { username, email, avatar });
       navigate("/login", { replace: true });
     } catch (e) {
       const msg = e?.response?.data?.error || "Registration failed.";
       setNotice({ kind: "error", text: msg });
+      logError(e, { where: "Register", username, email, avatar });
     } finally {
       setBusy(false);
     }
