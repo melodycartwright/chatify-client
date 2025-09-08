@@ -1,4 +1,31 @@
+import MessageItem from "../components/MessageItem.jsx";
+import MessageList from "../components/MessageList.jsx";
+import ConversationList from "../components/ConversationList.jsx";
+import ChatHeader from "../components/ChatHeader.jsx";
 
+function extractAuthorId(msg) {
+  const m = msg || {};
+  if (m.userId != null) return m.userId;
+  if (m.userid != null) return m.userid;
+  if (m.userID != null) return m.userID;
+  if (m.authorId != null) return m.authorId;
+  if (m.senderId != null) return m.senderId;
+  if (typeof m.user === "number") return m.user;
+  if (m.user?.userId != null) return m.user.userId;
+  if (m.user?.id != null) return m.user.id;
+  if (typeof m.createdBy === "number") return m.createdBy;
+  if (m.createdBy?.userId != null) return m.createdBy.userId;
+  if (m.createdBy?.id != null) return m.createdBy.id;
+  return null;
+}
+function deriveParticipants(messages, me) {
+  const set = new Set();
+  for (const m of messages) {
+    const u = extractAuthorName(m) || "";
+    if (u && u.toLowerCase() !== (me || "").toLowerCase()) set.add(u);
+  }
+  return Array.from(set);
+}
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   listConversations,
@@ -55,7 +82,6 @@ function normalizeConversationsPayload(data) {
   return Array.from(ids).map((id) => ({ conversationId: id }));
 }
 
-
 function extractAuthorName(msg) {
   return (
     msg?.username ||
@@ -69,44 +95,69 @@ function extractAuthorName(msg) {
     null
   );
 }
-function extractAuthorId(msg) {
-  const m = msg || {};
-  if (m.userId != null) return m.userId;
-  if (m.userid != null) return m.userid;
-  if (m.userID != null) return m.userID;
-  if (m.authorId != null) return m.authorId;
-  if (m.senderId != null) return m.senderId;
-  if (typeof m.user === "number") return m.user;
-  if (m.user?.userId != null) return m.user.userId;
-  if (m.user?.id != null) return m.user.id;
-  if (typeof m.createdBy === "number") return m.createdBy;
-  if (m.createdBy?.userId != null) return m.createdBy.userId;
-  if (m.createdBy?.id != null) return m.createdBy.id;
-  return null;
-}
-function deriveParticipants(messages, me) {
-  const set = new Set();
-  for (const m of messages) {
-    const u = extractAuthorName(m) || "";
-    if (u && u.toLowerCase() !== (me || "").toLowerCase()) set.add(u);
+
+// ...existing code...
+
+function authorNameOf(m) {
+  const mid = extractAuthorId(m);
+  if (mid != null) {
+    if (user?.userId != null && String(mid) === String(user.userId)) {
+      return user?.username || "Me";
+    }
+    // Always use cached username for recipient if available
+    const cached = peopleCache[String(mid)]?.username;
+    if (cached && cached !== "user") return cached;
+    // If not cached, fetch and update cache (async side effect)
+    if (!cached) {
+      getUserById(Number(mid)).then((u) => {
+        if (u?.username) {
+          setPeopleCache((prev) => ({
+            ...prev,
+            [String(mid)]: {
+              username: u.username,
+              avatar:
+                (u?.avatar && String(u.avatar).trim()) ||
+                fallbackAvatar(u.username || mid),
+            },
+          }));
+          setForceUpdate((f) => f + 1); // force re-render
+        }
+      });
+    }
+    // While fetching, show 'Loading…' for clarity
+    return "Loading…";
   }
-  return Array.from(set);
+  // Fallback to extracting from message
+  const explicit = extractAuthorName(m);
+  if (explicit) return explicit;
+  // If only one participant, use conversation title as fallback
+  if (participants.length === 1) {
+    return headerTitle;
+  }
+  return "Loading…";
 }
-
-
-function isTemp(id) {
-  return String(id).startsWith("temp_");
+// Returns the delivery stage for a message (e.g., sent, delivered, read)
+function deliveryStageOf(message) {
+  // Example logic: you may want to adjust this based on your app's message schema
+  if (message.readAt) return "read";
+  if (message.deliveredAt) return "delivered";
+  if (message.sentAt) return "sent";
+  return "pending";
 }
-function deliveryStageOf(msg) {
-  if (isTemp(msg?.id)) return "sending";
-  if (msg?.read || msg?.seen || msg?.isRead) return "read";
-  if (msg?.delivered) return "sent";
-  return "sent";
-}
+// Returns a symbol or emoji for the delivery stage
 function deliverySymbol(stage) {
-  if (stage === "sending") return "…";
-  if (stage === "read") return "✓✓";
-  return "✓";
+  switch (stage) {
+    case "read":
+      return "✅";
+    case "delivered":
+      return "📬";
+    case "sent":
+      return "✉️";
+    case "pending":
+      return "⏳";
+    default:
+      return "";
+  }
 }
 
 export default function Chat() {
@@ -135,6 +186,7 @@ export default function Chat() {
   const [showFullId, setShowFullId] = useState(false);
 
   const [peopleCache, setPeopleCache] = useState({});
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   const bottomRef = useRef(null);
 
@@ -260,14 +312,8 @@ export default function Chat() {
       const id = extractAuthorId(m);
       if (id == null) continue;
       const key = String(id);
+      // Always fetch if not cached, even if message lacks username
       if (!peopleCache[key]) {
-        const name = extractAuthorName(m);
-        if (name) {
-          setPeopleCache((prev) => ({
-            ...prev,
-            [key]: { username: name, avatar: prev[key]?.avatar },
-          }));
-        }
         toFetch.add(key);
       } else {
         if (!peopleCache[key].avatar) toFetch.add(key);
@@ -373,6 +419,16 @@ export default function Chat() {
           setTitle(selectedId, invited.username);
           setTitleMap(getAllTitles());
           setTitleInput(invited.username);
+          // Cache invited user's name and avatar for display
+          setPeopleCache((prev) => ({
+            ...prev,
+            [String(id)]: {
+              username: invited.username,
+              avatar:
+                (invited?.avatar && String(invited.avatar).trim()) ||
+                fallbackAvatar(invited.username || id),
+            },
+          }));
         }
       } catch {}
       setInviteUserId("");
@@ -501,17 +557,42 @@ export default function Chat() {
     );
   }
   function authorNameOf(m) {
-    const explicit = extractAuthorName(m);
-    if (explicit) return explicit;
     const mid = extractAuthorId(m);
     if (mid != null) {
       if (user?.userId != null && String(mid) === String(user.userId)) {
-        return user?.username || "me";
+        return user?.username || "Me";
       }
       const cached = peopleCache[String(mid)]?.username;
-      if (cached) return cached;
+      if (cached && cached !== "user") return cached;
+      if (!cached) {
+        console.log("authorNameOf: Fetching user for userId:", mid, m);
+        getUserById(Number(mid)).then((u) => {
+          console.log("authorNameOf: getUserById result for", mid, u);
+          if (u?.username) {
+            setPeopleCache((prev) => ({
+              ...prev,
+              [String(mid)]: {
+                username: u.username,
+                avatar:
+                  (u?.avatar && String(u.avatar).trim()) ||
+                  fallbackAvatar(u.username || mid),
+              },
+            }));
+            setForceUpdate((f) => f + 1); // force re-render
+          }
+        });
+      }
+      if (participants.length === 1) {
+        return headerTitle;
+      }
+      return "";
     }
-    return "user";
+    const explicit = extractAuthorName(m);
+    if (explicit) return explicit;
+    if (participants.length === 1) {
+      return headerTitle;
+    }
+    return "";
   }
   function avatarUrlOf(m) {
     const mine = isMine(m);
@@ -543,217 +624,61 @@ export default function Chat() {
 
   return (
     <div className="chat-grid">
-      <section className="chat-sidebar">
-        <div className="row">
-          <button
-            className="btn btn--success"
-            onClick={createNewConversationLocally}
-          >
-            + New conversation
-          </button>
-        </div>
-
-        {localNewConvId && (
-          <div className="hint" style={{ marginTop: 8 }}>
-            New GUID: <code>{localNewConvId}</code>
-            <br />
-            Invite someone so it becomes a shared thread.
-          </div>
-        )}
-
-        <h3 style={{ marginTop: 12 }}>Find users</h3>
-        <form className="row" onSubmit={onSearchUsers}>
-          <input
-            placeholder="Search by username…"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <button className="btn" type="submit" disabled={searching}>
-            {searching ? "…" : "Search"}
-          </button>
-        </form>
-        <ul className="list" style={{ marginTop: 8 }}>
-          {results.map((u) => (
-            <li key={u.userId}>
-              <button
-                title={`userId ${u.userId}`}
-                onClick={() => inviteKnownUserId(Number(u.userId))}
-              >
-                Invite {u.username} (id: {u.userId})
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        <h3 style={{ marginTop: 12 }}>Your conversations</h3>
-        <ul className="list">
-          {conversations.map((c) => {
-            const t = titleMap[c.conversationId] || shortGuid(c.conversationId);
-            return (
-              <li key={c.conversationId}>
-                <button
-                  className={selectedId === c.conversationId ? "active" : ""}
-                  onClick={() => {
-                    setSelectedId(c.conversationId);
-                    setBanner(null);
-                  }}
-                  title={c.conversationId}
-                >
-                  {t}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+      <ConversationList
+        conversations={conversations}
+        selectedId={selectedId}
+        setSelectedId={setSelectedId}
+        titleMap={titleMap}
+        shortGuid={shortGuid}
+        results={results}
+        inviteKnownUserId={inviteKnownUserId}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        onSearchUsers={onSearchUsers}
+        searching={searching}
+        localNewConvId={localNewConvId}
+        setBanner={setBanner}
+        createNewConversationLocally={createNewConversationLocally}
+      />
 
       <section className="chat-main">
-        <header className="chat-header">
-          <div style={{ display: "grid", gap: 6 }}>
-            {!editingTitle ? (
-              <div className="row space">
-                <h2 style={{ margin: 0 }}>{headerTitle}</h2>
-                <button className="btn" onClick={() => setEditingTitle(true)}>
-                  Rename
-                </button>
-              </div>
-            ) : (
-              <div className="row">
-                <input
-                  value={titleInput}
-                  onChange={(e) => setTitleInput(e.target.value)}
-                  placeholder="Conversation title"
-                  style={{ maxWidth: 360 }}
-                />
-                <button className="btn" onClick={saveTitle}>
-                  Save
-                </button>
-                <button
-                  className="btn"
-                  onClick={() => {
-                    setEditingTitle(false);
-                    setTitleInput(getTitle(selectedId) || "");
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-            <div className="id-chip">
-              <span>ID</span>
-              <code title={selectedId || ""}>
-                {shortGuid(selectedId || "")}
-              </code>
-              <button
-                className="btn btn--outline"
-                onClick={() => setShowFullId((v) => !v)}
-              >
-                {showFullId ? "Hide" : "Reveal"}
-              </button>
-              {showFullId && <code title="full">{selectedId}</code>}
-              <button className="btn btn--outline" onClick={copyIdToClipboard}>
-                Copy
-              </button>
-            </div>
-          </div>
-
-          <div className="row">
-            <input
-              inputMode="numeric"
-              placeholder="Invite userId (e.g. 55 — not a GUID)"
-              value={inviteUserId}
-              onChange={(e) => setInviteUserId(e.target.value)}
-              style={{ maxWidth: 260 }}
-            />
-            <button className="btn" onClick={onInviteNumeric}>
-              Invite
-            </button>
-          </div>
-          <div className="row" style={{ marginTop: 6 }}>
-            <input
-              placeholder="Invite by username (e.g. alice)"
-              value={inviteUsername}
-              onChange={(e) => setInviteUsername(e.target.value)}
-              style={{ maxWidth: 260 }}
-            />
-            <button className="btn" onClick={onInviteByUsername}>
-              Invite
-            </button>
-          </div>
-        </header>
-
+        import ChatHeader from "../components/ChatHeader.jsx"; // ...existing
+        code...
+        <ChatHeader
+          editingTitle={editingTitle}
+          headerTitle={headerTitle}
+          titleInput={titleInput}
+          setTitleInput={setTitleInput}
+          saveTitle={saveTitle}
+          setEditingTitle={setEditingTitle}
+          selectedId={selectedId}
+          shortGuid={shortGuid}
+          showFullId={showFullId}
+          setShowFullId={setShowFullId}
+          copyIdToClipboard={copyIdToClipboard}
+          inviteUserId={inviteUserId}
+          setInviteUserId={setInviteUserId}
+          onInviteNumeric={onInviteNumeric}
+          inviteUsername={inviteUsername}
+          setInviteUsername={setInviteUsername}
+          onInviteByUsername={onInviteByUsername}
+          getTitle={getTitle}
+        />
         {banner && (
           <Banner kind={banner.kind} onClose={() => setBanner(null)}>
             {banner.msg}
           </Banner>
         )}
-
-        <div className="messages">
-          {loading && <p>Loading…</p>}
-          {!loading && messages.length === 0 && <p>No messages yet.</p>}
-
-          {messages.map((m) => {
-            const mine = isMine(m);
-            const author = authorNameOf(m);
-            const avatar = avatarUrlOf(m);
-            const stage = deliveryStageOf(m);
-
-            return (
-              <div key={m.id} className={`msg-row ${mine ? "me" : "them"}`}>
-                {/* avatar BOTH sides */}
-                <img
-                  className="msg-avatar"
-                  src={avatar}
-                  alt={`${mine ? "You" : author} avatar`}
-                  loading="lazy"
-                />
-                <div style={{ display: "grid", gap: 4 }}>
-                  <div className="meta">
-                    <span>{mine ? "You" : author}</span>
-                    <span> • </span>
-                    <time dateTime={m.createdAt}>
-                      {new Date(m.createdAt).toLocaleString()}
-                    </time>
-                    {mine && (
-                      <span
-                        className={`ticks ticks--${stage}`}
-                        title={
-                          stage === "sending"
-                            ? "Sending"
-                            : stage === "read"
-                            ? "Read"
-                            : "Sent"
-                        }
-                        aria-label={stage}
-                      >
-                        {deliverySymbol(stage)}
-                      </span>
-                    )}
-                  </div>
-
-                  <div
-                    className={`bubble ${mine ? "bubble--me" : "bubble--them"}`}
-                    dangerouslySetInnerHTML={{
-                      __html: sanitize(
-                        String(m.text || "").replace(/\n/g, "<br/>")
-                      ),
-                    }}
-                  />
-
-                  {!mine && (
-                    <div className="actions">
-                      <button onClick={() => onDeleteMessage(m.id)}>
-                        Delete
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          <div ref={bottomRef} />
-        </div>
-
+        <MessageList
+          messages={messages}
+          loading={loading}
+          isMine={isMine}
+          authorNameOf={authorNameOf}
+          avatarUrlOf={avatarUrlOf}
+          deliveryStageOf={deliveryStageOf}
+          onDeleteMessage={onDeleteMessage}
+          bottomRef={bottomRef}
+        />
         <form className="form-row" onSubmit={onSend}>
           <input
             placeholder="Type a message…"

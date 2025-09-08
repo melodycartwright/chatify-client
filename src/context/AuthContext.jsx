@@ -8,7 +8,7 @@ import React, {
 import { api, setToken, loadTokenFromStorage } from "../api/client.js";
 import { listUsers } from "../api/client.js";
 import { getCsrfToken, resertCsrfToken } from "../api/csrf.js";
-import { initLogging, setUserContext } from "../logging/sentry.js";
+import { setUserContext } from "../logging/sentry.js";
 
 const AuthContext = createContext(null);
 
@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
   const [ready, setReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-//if token and username exist respond user
+  //if token and username exist respond user
   useEffect(() => {
     (async () => {
       const t = loadTokenFromStorage();
@@ -55,9 +55,8 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
-
   useEffect(() => {
-    initLogging(user);
+    setUserContext(user);
     setUserContext(user);
   }, [user?.userId, user?.username]);
 
@@ -92,9 +91,7 @@ export function AuthProvider({ children }) {
     if (!name) return;
     try {
       await resolveUserByUsername(name);
-    } catch {
-
-    }
+    } catch {}
   }
 
   async function register({ username, password, email, avatar }) {
@@ -109,7 +106,6 @@ export function AuthProvider({ children }) {
       csrfToken,
     };
     await api.post("/auth/register", payload);
-
   }
 
   async function login({ username, password }) {

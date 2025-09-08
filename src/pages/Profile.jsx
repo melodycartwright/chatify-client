@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { updateUserInfo, deleteUserById } from "../api/client.js";
@@ -30,6 +30,7 @@ export default function Profile() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [avatar, setAvatar] = useState("");
+  const avatarImgRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -49,6 +50,38 @@ export default function Profile() {
   }
 
   // ...existing code...
+
+  async function onDelete() {
+    const id = currentId();
+    if (!id) {
+      setNotice({
+        kind: "error",
+        text: "Missing user ID. Try reloading or re-login.",
+      });
+      return;
+    }
+    if (deleteConfirm !== "DELETE") {
+      setNotice({ kind: "error", text: "Type DELETE to confirm." });
+      return;
+    }
+    setDeleting(true);
+    setNotice(null);
+    try {
+      await deleteUserById(id);
+      logInfo("Account deleted", { userId: id });
+      setNotice({ kind: "success", text: "Account deleted. Logging out…" });
+      setTimeout(() => {
+        logout();
+        navigate("/register");
+      }, 1200);
+    } catch (e) {
+      const msg = e?.response?.data?.error || e?.message || "Delete failed.";
+      setNotice({ kind: "error", text: msg });
+      logError(e, { where: "Profile delete", userId: id });
+    } finally {
+      setDeleting(false);
+    }
+  }
   async function onSave(e) {
     e.preventDefault();
     const id = currentId();
@@ -69,7 +102,13 @@ export default function Profile() {
     } catch (e) {
       const msg = e?.response?.data?.error || e?.message || "Update failed.";
       setNotice({ kind: "error", text: msg });
-      logError(e, { where: "Profile update", userId: id, username, email, avatar });
+      logError(e, {
+        where: "Profile update",
+        userId: id,
+        username,
+        email,
+        avatar,
+      });
     } finally {
       setSaving(false);
     }
@@ -116,10 +155,36 @@ export default function Profile() {
           <div>Avatar URL</div>
           <input
             value={avatar}
-            onChange={(e) => setAvatar(e.target.value)}
+            onChange={(e) => {
+              setAvatar(e.target.value);
+              if (avatarImgRef.current) {
+                avatarImgRef.current.style.display = "";
+              }
+            }}
             placeholder="https://…"
             autoComplete="photo"
           />
+          {avatar && (
+            <div style={{ marginTop: 8 }}>
+              <span>Preview:</span>
+              <br />
+              <img
+                ref={avatarImgRef}
+                src={avatar}
+                alt="Avatar preview"
+                style={{
+                  width: 100,
+                  height: 100,
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  border: "1px solid #ccc",
+                }}
+                onError={(e) => {
+                  e.target.style.display = "none";
+                }}
+              />
+            </div>
+          )}
         </label>
 
         <div>

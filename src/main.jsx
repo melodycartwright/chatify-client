@@ -7,8 +7,8 @@ import { AuthProvider } from "./context/AuthContext.jsx";
 import App from "./App.jsx";
 import "./App.css";
 
-import { initLogging } from "./logging/sentry.js"; 
-initLogging(); 
+// import { setUserContext, logError, logInfo } from "./logging/sentry.js";
+// Sentry is initialized automatically in sentry.js
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
