@@ -642,8 +642,7 @@ export default function Chat() {
       />
 
       <section className="chat-main">
-        import ChatHeader from "../components/ChatHeader.jsx"; // ...existing
-        code...
+ 
         <ChatHeader
           editingTitle={editingTitle}
           headerTitle={headerTitle}
