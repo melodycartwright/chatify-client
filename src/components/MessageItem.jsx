@@ -9,9 +9,12 @@ export default function MessageItem({
   onDelete,
 }) {
   // Fallback for missing author
-  const displayAuthor = author && String(author).trim().length
-    ? author
-    : (message.userId ? `User ${message.userId}` : "Loading…");
+  const displayAuthor =
+    author && String(author).trim().length
+      ? author
+      : message.userId
+      ? `User ${message.userId}`
+      : "Loading…";
 
   return (
     <div
@@ -53,7 +56,7 @@ export default function MessageItem({
           className={`bubble ${mine ? "bubble--me" : "bubble--them"}`}
           style={{ textAlign: mine ? "right" : "left" }}
           dangerouslySetInnerHTML={{
-            __html: message.text.replace(/\n/g, "<br/>")
+            __html: message.text.replace(/\n/g, "<br/>"),
           }}
         />
         <div className="actions" style={{ textAlign: mine ? "right" : "left" }}>
