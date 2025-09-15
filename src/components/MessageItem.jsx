@@ -8,6 +8,11 @@ export default function MessageItem({
   stage,
   onDelete,
 }) {
+  // Fallback for missing author
+  const displayAuthor = author && String(author).trim().length
+    ? author
+    : (message.userId ? `User ${message.userId}` : "Loading…");
+
   return (
     <div
       className={`msg-row ${mine ? "me" : "them"}`}
@@ -17,13 +22,13 @@ export default function MessageItem({
         <img
           className="msg-avatar"
           src={avatar}
-          alt={`${author} avatar`}
+          alt={`${displayAuthor} avatar`}
           loading="lazy"
         />
       )}
       <div style={{ display: "grid", gap: 4, maxWidth: 400 }}>
         <div className="meta" style={{ textAlign: mine ? "right" : "left" }}>
-          <span>{author}</span>
+          <span>{displayAuthor}</span>
           <span> • </span>
           <time dateTime={message.createdAt}>
             {new Date(message.createdAt).toLocaleString()}
@@ -48,7 +53,7 @@ export default function MessageItem({
           className={`bubble ${mine ? "bubble--me" : "bubble--them"}`}
           style={{ textAlign: mine ? "right" : "left" }}
           dangerouslySetInnerHTML={{
-            __html: message.text.replace(/\n/g, "<br/>"),
+            __html: message.text.replace(/\n/g, "<br/>")
           }}
         />
         <div className="actions" style={{ textAlign: mine ? "right" : "left" }}>
@@ -59,7 +64,7 @@ export default function MessageItem({
         <img
           className="msg-avatar"
           src={avatar}
-          alt={`${author} avatar`}
+          alt={`${displayAuthor} avatar`}
           loading="lazy"
         />
       )}

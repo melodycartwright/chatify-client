@@ -69,6 +69,8 @@ export default function Profile() {
     try {
       await deleteUserById(id);
       logInfo("Account deleted", { userId: id });
+      // Clear user-specific localStorage data
+      localStorage.removeItem("conv_titles");
       setNotice({ kind: "success", text: "Account deleted. Logging out…" });
       setTimeout(() => {
         logout();

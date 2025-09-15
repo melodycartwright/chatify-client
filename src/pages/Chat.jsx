@@ -92,6 +92,9 @@ function extractAuthorName(msg) {
     msg?.sender?.username ||
     msg?.createdBy?.username ||
     msg?.createdByName ||
+    msg?.name ||
+    msg?.userid ||
+    msg?.author?.name ||
     null
   );
 }
